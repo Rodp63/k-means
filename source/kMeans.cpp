@@ -17,9 +17,9 @@ struct Point {
   int cluster;
   void reset() { 
     dist_from_cluster = numeric_limits<double>::max();
-    cluster = -1;
   }
   Point(double a, double b) : x(a), y(b) {
+    cluster = -1;
     reset();
   }
   double get_dist_to(const Point &p) {
@@ -27,7 +27,7 @@ struct Point {
   }
 };
 
-void loadFile(vector<Point> &points, size_t n_points = 10000) {
+void loadFile(vector<Point> &points, size_t n_points) {
   // 6th row = Start_Lon
   // 7th row = Start_Lat
   ifstream data(CSV_PATH);
@@ -62,17 +62,29 @@ void getBounds(vector<Point> &points, int &max_x, int &max_y, int &min_x, int &m
   }
 }
 
-vector<Point> kMeans(vector<Point> &points, size_t k) {
+vector<Point> kMeans(vector<Point> &points, size_t k, bool ask) {
   srand(time(NULL));
   vector<Point> centroids;
-  int max_x, max_y, min_x, min_y;
-  getBounds(points, max_x, max_y, min_x, min_y);
-  int limit_x = max(abs(max_x), abs(min_x));
-  int limit_y = max(abs(max_y), abs(min_y));
-  for (int i = 0; i < k; ++i) {
-    float rand_x = -1 * (rand() % 2 ? -1 : 1) * (rand() % limit_x);
-    float rand_y = -1 * (rand() % 2 ? -1 : 1) * (rand() % limit_y);
-    centroids.emplace_back(rand_x, rand_y);
+  if (!ask) {
+    // Random centroids
+    int max_x, max_y, min_x, min_y;
+    getBounds(points, max_x, max_y, min_x, min_y);
+    int limit_x = max(abs(max_x), abs(min_x));
+    int limit_y = max(abs(max_y), abs(min_y));
+    for (int i = 0; i < k; ++i) {
+      float rand_x = -1 * (rand() % 2 ? -1 : 1) * (rand() % limit_x);
+      float rand_y = -1 * (rand() % 2 ? -1 : 1) * (rand() % limit_y);
+      centroids.emplace_back(rand_x, rand_y);
+    }
+  }
+  else {
+    // Ask for centroids
+    for (int i = 0; i < k; ++i) {
+      cout<<"["<<i+1<<"] Enter x and y coordinates: ";
+      double x, y;
+      cin>>x>>y;
+      centroids.emplace_back(x, y);
+    }
   }
   bool go = true;
   while (go) {
@@ -105,20 +117,29 @@ vector<Point> kMeans(vector<Point> &points, size_t k) {
   return centroids;
 }
 
-int main() {
+int main(int argc, char* args[]) {
   vector<Point> points;
-  size_t k = 10;
-  size_t n = 7291703;
+  size_t k = (argc >= 2 ? stoi(args[1]) : 10);
+  size_t n = (argc >= 3 ? stoi(args[2]) : 7000000);
   loadFile(points, n);
   
   cout<<"------------------------\n";
   cout<<" Point Count: "<<points.size()<<endl;
   cout<<" k value: "<<k<<endl;
   cout<<"------------------------\n";
-  
-  vector<Point> centroids = kMeans(points, k);
+  cout<<"Do you want to predefine the "<<k<<" initial centroids? (y/n) ";
+  bool ask; char ans;
+  cin>>ans;
+  ask = (ans == 'y' ? true : false);
+  vector<Point> centroids = kMeans(points, k, ask);
+  vector<int> pointCount(k, 0);
+  for (Point &p : points) 
+    pointCount[p.cluster]++;
+  cout<<"------------------------\n";
   cout<<" Centroids:"<<endl;
-  for (Point &p : centroids) 
-    cout<<fixed<<setprecision(3)<<" > ("<<p.x<<" , "<<p.y<<")\n";
+  for (int i = 0; i < k; ++i) {
+    cout<<fixed<<setprecision(3)<<" > ("<<centroids[i].x<<" , "<<centroids[i].y<<")";
+    cout<<" : "<<pointCount[i]<<" points\n";
+  }
   cout<<"------------------------\n";
 }
