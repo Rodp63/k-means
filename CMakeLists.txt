@@ -1,4 +1,4 @@
-project("Curse of Dimensionality")
+project("k-means")
 
 cmake_minimum_required(VERSION 3.15)
 
